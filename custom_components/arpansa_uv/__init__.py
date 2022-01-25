@@ -1,0 +1,1 @@
+"""ARPANSA UV Values Component"""

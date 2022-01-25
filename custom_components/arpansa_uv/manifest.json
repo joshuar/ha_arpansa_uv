@@ -1,0 +1,11 @@
+{
+  "codeowners": ["@joshuar"],
+  "config_flow": false,
+  "dependencies": [],
+  "documentation": "https://github.com/joshuar/ha-arpansa-uv-values",
+  "domain": "arpansa_uv",
+  "iot_class": "cloud_polling",
+  "name": "ARPANSA UV Values",
+  "requirements": ["bs4==0.0.1","lxml==4.7.1","inflection==0.5.1"],
+  "version": "0.0.1"
+}
