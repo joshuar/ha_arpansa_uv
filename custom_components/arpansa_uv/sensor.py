@@ -3,37 +3,35 @@ from .arpansa import Arpansa
 import inflection
 import logging
 from datetime import timedelta
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
 )
-from .const import (
-    ATTRIBUTION
-)
+
 from homeassistant.const import (
     ATTR_ATTRIBUTION,
 )
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import (
-    ConfigType,
-    DiscoveryInfoType,
-    HomeAssistantType,
+from .const import (
+    ATTRIBUTION
 )
+
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+# import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(minutes=1)
 
 async def async_setup_platform(
-    hass: HomeAssistantType,
+    hass: HomeAssistant,
     config: ConfigType,
     async_add_entities: AddEntitiesCallback,
-    discovery_info: Optional[DiscoveryInfoType] = None,
+    discovery_info: DiscoveryInfoType | None = None
 ) -> None:
     """Set up the sensor platform."""
     session = async_get_clientsession(hass)
@@ -44,23 +42,22 @@ async def async_setup_platform(
         sensors += [ArpansaSensor(measurement)]
     async_add_entities(sensors, update_before_add=True)
 
-class ArpansaSensor(Entity):
+class ArpansaSensor(SensorEntity):
     """Representation of an ARPANSA sensor."""
     def __init__(self, measurement: Dict[str, str]):
         self.measurement = measurement
-        self._name = self._createSensorName()
         self._state = None
         self._available = True
-        self._attr_name = self.measurement["name"]
 
     @property
     def name(self) -> str:
         """Return the name of the entity."""
-        return self._name
+        return self.measurement["name"] + " UV Index"
 
     @property
-    def state(self) -> Optional[str]:
-        return self._state
+    def unique_id(self) -> str:
+        """Return the unique ID of the sensor."""
+        return self._createSensorName()
 
     @property
     def available(self) -> bool:
@@ -68,24 +65,24 @@ class ArpansaSensor(Entity):
         return self._available
 
     @property
-    def icon(self) -> str | None:
-        """Icon of the entity."""
+    def native_value(self) -> Optional[float]:
+        """Return the current value of the sensor."""
+        return self._state
+
+    @property
+    def icon(self) -> str:
+        """Return the icon for the entity."""
         return "mdi:sunglasses"
 
     @property
-    def state_class(self) -> Any | None:
-        """State class of the entity."""
+    def state_class(self):
+        """Return the state class for the entity."""
         return SensorStateClass.MEASUREMENT
 
     @property
-    def attribution(self):
-        """Return the attribution."""
+    def attribution(self) -> str:
+        """Return the attribution for the sensor data."""
         return ATTRIBUTION
-
-    @property
-    def unique_id(self):
-        """Return the attribution."""
-        return self._name
 
     async def async_update(self):
         try:
@@ -95,7 +92,8 @@ class ArpansaSensor(Entity):
             self._state = arpansa.getLatest(self.measurement["name"])
         except:
             self._available = False
+            _LOGGER.exception("Error retrieving data.")
 
     def _createSensorName(self):
-        """Format the location name into a sensor name"""
+        """Format the location name into a sensor name."""
         return "arpansa_uv_" + inflection.underscore(self.measurement["name"])
