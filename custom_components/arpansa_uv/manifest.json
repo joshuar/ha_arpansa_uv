@@ -1,6 +1,6 @@
 {
   "codeowners": ["@joshuar"],
-  "config_flow": false,
+  "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/joshuar/ha-arpansa-uv-values",
   "domain": "arpansa_uv",

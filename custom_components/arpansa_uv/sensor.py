@@ -1,19 +1,19 @@
-"""Platform for ARPANSA sensors integration"""
-from .arpansa import Arpansa
+"""Sensor platform for ARPANSA."""
+from .pyarpansa import Arpansa
 import inflection
 import logging
 from datetime import timedelta
 from typing import Any, Dict, Optional
 
 from homeassistant.components.sensor import (
-    SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
 )
 
 from homeassistant.const import (
-    ATTR_ATTRIBUTION,
+    CONF_NAME
 )
+
 from .const import (
     ATTRIBUTION
 )
@@ -22,6 +22,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.config_entries import ConfigEntry
 # import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,6 +35,12 @@ async def async_setup_platform(
     discovery_info: DiscoveryInfoType | None = None
 ) -> None:
     """Set up the sensor platform."""
+    if discovery_info is None:
+        devices = [
+            dict(device_config, **{CONF_NAME: device_name})
+            # for (device_name, device_config) in config[CONF_SENSORS].items()
+        ]
+    
     session = async_get_clientsession(hass)
     arpansa = Arpansa()
     await arpansa.fetchLatestMeasurements(session)
@@ -41,6 +48,7 @@ async def async_setup_platform(
     for measurement in arpansa.getAllLatest():
         sensors += [ArpansaSensor(measurement)]
     async_add_entities(sensors, update_before_add=True)
+    return True
 
 class ArpansaSensor(SensorEntity):
     """Representation of an ARPANSA sensor."""
@@ -85,6 +93,7 @@ class ArpansaSensor(SensorEntity):
         return ATTRIBUTION
 
     async def async_update(self):
+        """Retrieve latest state."""
         try:
             session = async_get_clientsession(self.hass)
             arpansa = Arpansa()
