@@ -1,21 +1,20 @@
 """Sensor platform for ARPANSA."""
+from __future__ import annotations
+
 from .pyarpansa import Arpansa
 import inflection
 import logging
 from datetime import timedelta
 from typing import Any, Dict, Optional
+import voluptuous as vol
 
 from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
 
-from homeassistant.const import (
-    CONF_NAME
-)
-
 from .const import (
-    ATTRIBUTION
+    ATTRIBUTION,
 )
 
 from homeassistant.core import HomeAssistant
@@ -26,6 +25,7 @@ from homeassistant.config_entries import ConfigEntry
 # import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
+
 SCAN_INTERVAL = timedelta(minutes=1)
 
 async def async_setup_platform(
@@ -34,21 +34,24 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None
 ) -> None:
-    """Set up the sensor platform."""
-    if discovery_info is None:
-        devices = [
-            dict(device_config, **{CONF_NAME: device_name})
-            # for (device_name, device_config) in config[CONF_SENSORS].items()
-        ]
-    
+   """Deprecated setup."""
+   pass
+
+
+async def async_setup_entry(hass, config_entry, async_add_entities: AddEntitiesCallback):
+    """Set up ARPANSA UV."""
+    sensors = list()
+    # if discovery_info is None:
     session = async_get_clientsession(hass)
     arpansa = Arpansa()
     await arpansa.fetchLatestMeasurements(session)
-    sensors = list()
-    for measurement in arpansa.getAllLatest():
-        sensors += [ArpansaSensor(measurement)]
+    for sensor in arpansa.getAllLatest():
+        sensors += [ArpansaSensor(sensor)]
+    # else:
+    #     sensors = discovery_info["sensors"]
+
     async_add_entities(sensors, update_before_add=True)
-    return True
+
 
 class ArpansaSensor(SensorEntity):
     """Representation of an ARPANSA sensor."""
