@@ -1,14 +1,19 @@
 """Config flow for ARPANSA UV Values integration."""
 from __future__ import annotations
 from ast import Str
+from gc import callbacks
 
 import logging
 from typing import Any
+from wsgiref import validate
 
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
+from homeassistant.core import (
+    HomeAssistant,
+    callback
+)
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
@@ -20,12 +25,48 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {   
-        vol.Required('name',default=DEFAULT_NAME): str,
-        vol.Optional('poll_interval', default=DEFAULT_SCAN_INTERVAL): vol.Range(min=1),
-    }
-)
+def build_config_schema(
+    config_entry: config_entries | None,
+    hass: HomeAssistant,
+    show_advanced: bool = False,
+    step: str = "user",
+) -> vol.Schema:
+    """Build configuration schema.
+    :param config_entry: config entry for getting current parameters on None
+    :param hass: Home Assistant instance
+    :param show_advanced: bool: should we show advanced options?
+    :param step: for which step we should build schema
+    :return: Configuration schema with default parameters
+    """ 
+    schema = vol.Schema(
+        {   
+            vol.Required("name",description={"suggested_value": DEFAULT_NAME}): str,
+        }
+    )
+
+    # if show_advanced:
+
+    return schema
+
+def build_options_schema(
+    config_entry: config_entries | None,
+    hass: HomeAssistant,
+    show_advanced: bool = False,
+    step: str = "user",
+) -> vol.Schema:
+    """Build configuration schema.
+    :param config_entry: config entry for getting current parameters on None
+    :param hass: Home Assistant instance
+    :param show_advanced: bool: should we show advanced options?
+    :param step: for which step we should build schema
+    :return: Configuration schema with default parameters
+    """
+    return vol.Schema(
+            {
+                vol.Required("poll_interval", description={"suggested_value": DEFAULT_SCAN_INTERVAL}): vol.Range(min=1),
+            }
+        )
+
 
 
 # class PlaceholderHub:
@@ -43,12 +84,13 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 #     #     return True
 
 
-async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
+async def validate_input(hass: HomeAssistant, data: dict[str, Any], step_id: str) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
-    Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
+    Data has the keys from build_schema() with values provided by the user.
     """
     # TODO validate the data can be used to set up a connection.
+    validated_input = {}
 
     # If your PyPI package is not built with async, pass your methods
     # to the executor:
@@ -65,9 +107,12 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     # throw CannotConnect
     # If the authentication is wrong:
     # InvalidAuth
+    _LOGGER.info(f"Input to validate is {data}")
+
+    validated_input = data
 
     # Return info that you want to store in the config entry.
-    return {"title": data['name']}
+    return validated_input
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -78,16 +123,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step."""
-        if user_input is None:
-            return self.async_show_form(
-                step_id="user", data_schema=STEP_USER_DATA_SCHEMA
-            )
-
+        """Get values from user."""
+        info = {}
         errors = {}
 
+        config_schema = build_config_schema(
+            config_entry=None,
+            hass=self.hass,
+            show_advanced=self.show_advanced_options,
+        )
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="user", data_schema=config_schema
+            )
         try:
-            info = await validate_input(self.hass, user_input)
+            info = await validate_input(self.hass, data=user_input, step_id="user")
         except CannotConnect:
             errors["base"] = "cannot_connect"
         except InvalidAuth:
@@ -96,10 +147,46 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.exception("Unexpected exception")
             errors["base"] = "unknown"
         else:
-            return self.async_create_entry(title=info["title"], data=user_input)
+            return self.async_create_entry(title=info["name"], data=user_input)
 
         return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
+            step_id="user", data_schema=config_schema, errors=errors
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return OptionsFlowHandler(config_entry)        
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    def __init__(self, config_entry):
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input=None):
+        """Manage the options."""
+        errors = {}
+
+        options_schema = build_options_schema(
+            config_entry=None,
+            hass=self.hass,
+        )
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="init", data_schema=options_schema
+            )
+
+        try:
+            await validate_input(self.hass, data=user_input, step_id="init")
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception("Unexpected exception")
+            errors["base"] = "unknown"
+        else:
+            return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="init", data_schema=options_schema, errors=errors
         )
 
 

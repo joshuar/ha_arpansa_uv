@@ -15,6 +15,7 @@ from homeassistant.components.sensor import (
 
 from .const import (
     ATTRIBUTION,
+    DEFAULT_SCAN_INTERVAL,
 )
 
 from homeassistant.core import HomeAssistant
@@ -25,8 +26,7 @@ from homeassistant.config_entries import ConfigEntry
 # import homeassistant.helpers.config_validation as cv
 
 _LOGGER = logging.getLogger(__name__)
-
-SCAN_INTERVAL = timedelta(minutes=1)
+SCAN_INTERVAL = timedelta(minutes=DEFAULT_SCAN_INTERVAL)
 
 async def async_setup_platform(
     hass: HomeAssistant,
@@ -40,15 +40,13 @@ async def async_setup_platform(
 
 async def async_setup_entry(hass, config_entry, async_add_entities: AddEntitiesCallback):
     """Set up ARPANSA UV."""
+
     sensors = list()
-    # if discovery_info is None:
     session = async_get_clientsession(hass)
     arpansa = Arpansa()
     await arpansa.fetchLatestMeasurements(session)
     for sensor in arpansa.getAllLatest():
         sensors += [ArpansaSensor(sensor)]
-    # else:
-    #     sensors = discovery_info["sensors"]
 
     async_add_entities(sensors, update_before_add=True)
 
