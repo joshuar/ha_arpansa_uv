@@ -1,11 +1,10 @@
 """Config flow for ARPANSA UV Values integration."""
 from __future__ import annotations
-from ast import Str
-from gc import callbacks
 
 import logging
 from typing import Any
-from wsgiref import validate
+
+from .pyarpansa import Arpansa
 
 import voluptuous as vol
 
@@ -16,8 +15,13 @@ from homeassistant.core import (
 )
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
+import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
+    CONF_POLL_INTERVAL,
+    CONF_LOCATIONS,
+    CONF_NAME,
     DOMAIN,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_NAME,
@@ -25,11 +29,11 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-def build_config_schema(
+async def build_schema(
     config_entry: config_entries | None,
     hass: HomeAssistant,
     show_advanced: bool = False,
-    step: str = "user",
+    step: str = None,
 ) -> vol.Schema:
     """Build configuration schema.
     :param config_entry: config entry for getting current parameters on None
@@ -38,35 +42,31 @@ def build_config_schema(
     :param step: for which step we should build schema
     :return: Configuration schema with default parameters
     """ 
-    schema = vol.Schema(
-        {   
-            vol.Required("name",description={"suggested_value": DEFAULT_NAME}): str,
-        }
-    )
+    match step:
+        case "user":
+            session = async_get_clientsession(hass)
+            arpansa = Arpansa()
+            await arpansa.fetchLatestMeasurements(session)
+            locations = arpansa.getAllLocations()
 
-    # if show_advanced:
+            schema = vol.Schema(
+                {   
+                    vol.Required(CONF_NAME,default=DEFAULT_NAME): cv.string,
+                    vol.Required(CONF_LOCATIONS): cv.multi_select(locations),
+                }
+            )
 
-    return schema
-
-def build_options_schema(
-    config_entry: config_entries | None,
-    hass: HomeAssistant,
-    show_advanced: bool = False,
-    step: str = "user",
-) -> vol.Schema:
-    """Build configuration schema.
-    :param config_entry: config entry for getting current parameters on None
-    :param hass: Home Assistant instance
-    :param show_advanced: bool: should we show advanced options?
-    :param step: for which step we should build schema
-    :return: Configuration schema with default parameters
-    """
-    return vol.Schema(
-            {
-                vol.Required("poll_interval", description={"suggested_value": DEFAULT_SCAN_INTERVAL}): vol.Range(min=1),
-            }
-        )
-
+            return schema
+        case "init":
+            schema = vol.Schema(
+                    {
+                        vol.Required(CONF_POLL_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.Range(min=1),
+                    }
+                )
+            return schema
+        case None:
+            _LOGGER.error("No schema provided? Should not get here")
+            return None
 
 
 # class PlaceholderHub:
@@ -127,10 +127,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         info = {}
         errors = {}
 
-        config_schema = build_config_schema(
+        config_schema = await build_schema(
             config_entry=None,
             hass=self.hass,
             show_advanced=self.show_advanced_options,
+            step = "user",
         )
 
         if user_input is None:
@@ -147,7 +148,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.exception("Unexpected exception")
             errors["base"] = "unknown"
         else:
-            return self.async_create_entry(title=info["name"], data=user_input)
+            return self.async_create_entry(title=info[CONF_NAME], data=user_input)
 
         return self.async_show_form(
             step_id="user", data_schema=config_schema, errors=errors
@@ -167,22 +168,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         """Manage the options."""
         errors = {}
 
-        options_schema = build_options_schema(
+        options_schema = await build_schema(
             config_entry=None,
             hass=self.hass,
+            step = "init",
         )
 
-        if user_input is None:
-            return self.async_show_form(
-                step_id="init", data_schema=options_schema
-            )
-
-        try:
-            await validate_input(self.hass, data=user_input, step_id="init")
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.exception("Unexpected exception")
-            errors["base"] = "unknown"
-        else:
+        if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(

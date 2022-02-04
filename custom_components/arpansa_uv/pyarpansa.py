@@ -22,11 +22,11 @@ class Arpansa:
 
     def getAllLocations(self):
         """Get the names of all locations."""
-        rs = self.measurements.find_all("location")
+        rs = self.measurements.find_all("location") 
         allLocations = []
         for l in rs:
             allLocations.append(l.get("id"))
-        return tuple(allLocations)
+        return allLocations
 
     def getAllLatest(self):
         """Get the latest measurements for all locations."""

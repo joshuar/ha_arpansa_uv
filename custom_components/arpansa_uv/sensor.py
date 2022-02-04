@@ -15,6 +15,7 @@ from homeassistant.components.sensor import (
 
 from .const import (
     ATTRIBUTION,
+    CONF_LOCATIONS,
     DEFAULT_SCAN_INTERVAL,
 )
 
@@ -40,28 +41,32 @@ async def async_setup_platform(
 
 async def async_setup_entry(hass, config_entry, async_add_entities: AddEntitiesCallback):
     """Set up ARPANSA UV."""
-
     sensors = list()
-    session = async_get_clientsession(hass)
-    arpansa = Arpansa()
-    await arpansa.fetchLatestMeasurements(session)
-    for sensor in arpansa.getAllLatest():
-        sensors += [ArpansaSensor(sensor)]
+
+    if config_entry.data[CONF_LOCATIONS] is not None:
+        for location in config_entry.data[CONF_LOCATIONS]:
+            sensors += [ArpansaSensor({"name": location})]
+    else: 
+        session = async_get_clientsession(hass)
+        arpansa = Arpansa()
+        await arpansa.fetchLatestMeasurements(session)
+        for sensor in arpansa.getAllLatest():
+            sensors += [ArpansaSensor(sensor)]
 
     async_add_entities(sensors, update_before_add=True)
 
 
 class ArpansaSensor(SensorEntity):
     """Representation of an ARPANSA sensor."""
-    def __init__(self, measurement: Dict[str, str]):
-        self.measurement = measurement
+    def __init__(self, rawDetails: Dict[str, str]):
+        self.details = rawDetails
         self._state = None
         self._available = True
 
     @property
     def name(self) -> str:
         """Return the name of the entity."""
-        return self.measurement["name"] + " UV Index"
+        return self.details["name"] + " UV Index"
 
     @property
     def unique_id(self) -> str:
@@ -99,11 +104,11 @@ class ArpansaSensor(SensorEntity):
             session = async_get_clientsession(self.hass)
             arpansa = Arpansa()
             await arpansa.fetchLatestMeasurements(session)
-            self._state = arpansa.getLatest(self.measurement["name"])
+            self._state = arpansa.getLatest(self.details["name"])
         except:
             self._available = False
             _LOGGER.exception("Error retrieving data.")
 
     def _createSensorName(self):
         """Format the location name into a sensor name."""
-        return "arpansa_uv_" + inflection.underscore(self.measurement["name"])
+        return "arpansa_uv_" + inflection.underscore(self.details["name"])

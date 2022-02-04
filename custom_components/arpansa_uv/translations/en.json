@@ -3,7 +3,8 @@
         "step": {
             "user": {
                 "data": {
-                    "name": "Custom name for this integration"
+                    "name": "Custom name for this integration",
+                    "sensors": "List of sensors to track"
                 }
             },
             "description": "Configure ARPANSA UV integration",
@@ -14,7 +15,7 @@
         "step": {
             "init": {
                 "data": {
-                    "poll_interval": "Interval to poll ARPANSA for new values (in minutes)"
+                    "poll_interval": "Interval to poll ARPANSA for new values in minutes"
                 }
             },
             "description": "Options for ARPANSA UV",
