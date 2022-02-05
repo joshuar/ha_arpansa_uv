@@ -6,6 +6,7 @@ import aiohttp
 import asyncio
 from .const import ARPANSA_URL
 
+
 class Arpansa:
     """Arpansa class fetches the latest measurements from the ARPANSA site"""
     def __init__(self):
@@ -16,7 +17,7 @@ class Arpansa:
         async with session.get(ARPANSA_URL) as response:
             try:
                 t = await response.text()
-                self.measurements = BeautifulSoup(t,'lxml')
+                self.measurements = BeautifulSoup(t,'xml')
             except response.status != 200:
                 self.measurements = None
 
@@ -33,16 +34,25 @@ class Arpansa:
         rs = self.measurements.find_all("location")
         allLocations = []
         for l in rs:
-            thisLocation = {}
-            thisLocation["name"] = l.get("id")
-            thisLocation["value"] = l.find("index").text
+            thisLocation = extractInfo(l)
+            thisLocation["friendlyname"] = l.get("id")
             allLocations.append(thisLocation)
         return tuple(allLocations)
-
+    
     def getLatest(self,name):
         """Get the latest measurements for a specified location."""
         rs = self.measurements.find("location", {"id": name})
-        return rs.find("index").text
+        info = extractInfo(rs)
+        info["friendlyname"] = name
+        return info
+    
+def extractInfo(rs):
+    """Convert a BeautifulSoup ResultSet into a dictionary."""
+    extracted = {}
+    for state in rs:
+        if state.name is not None:
+            extracted[state.name] = state.text
+    return extracted
 
 async def main():
     """Example usage of the class"""

@@ -43,13 +43,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities: AddEntitiesC
     """Set up ARPANSA UV."""
     sensors = list()
 
+    session = async_get_clientsession(hass)
+    arpansa = Arpansa()
+    await arpansa.fetchLatestMeasurements(session)
+
     if config_entry.data[CONF_LOCATIONS] is not None:
         for location in config_entry.data[CONF_LOCATIONS]:
-            sensors += [ArpansaSensor({"name": location})]
+            sensors += [ArpansaSensor(arpansa.getLatest(location))]
     else: 
-        session = async_get_clientsession(hass)
-        arpansa = Arpansa()
-        await arpansa.fetchLatestMeasurements(session)
         for sensor in arpansa.getAllLatest():
             sensors += [ArpansaSensor(sensor)]
 
@@ -58,15 +59,16 @@ async def async_setup_entry(hass, config_entry, async_add_entities: AddEntitiesC
 
 class ArpansaSensor(SensorEntity):
     """Representation of an ARPANSA sensor."""
-    def __init__(self, rawDetails: Dict[str, str]):
-        self.details = rawDetails
+    def __init__(self, details: Dict[str, str]):
+        self.details = details
+        self._name = details["friendlyname"]
         self._state = None
         self._available = True
 
     @property
     def name(self) -> str:
         """Return the name of the entity."""
-        return self.details["name"] + " UV Index"
+        return self._name + " UV Index"
 
     @property
     def unique_id(self) -> str:
@@ -104,7 +106,12 @@ class ArpansaSensor(SensorEntity):
             session = async_get_clientsession(self.hass)
             arpansa = Arpansa()
             await arpansa.fetchLatestMeasurements(session)
-            self._state = arpansa.getLatest(self.details["name"])
+            self.details = arpansa.getLatest(self._name)
+            if self.details["status"] == "ok":
+                self._available = True
+                self._state = self.details["index"]
+            else:
+                self._available = False
         except:
             self._available = False
             _LOGGER.exception("Error retrieving data.")
