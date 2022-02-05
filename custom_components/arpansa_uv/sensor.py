@@ -4,13 +4,19 @@ from __future__ import annotations
 from .pyarpansa import Arpansa
 import inflection
 import logging
-from datetime import timedelta
+from datetime import (
+    date,
+    datetime,
+    timedelta,
+)
 from typing import Any, Dict, Optional
+from collections.abc import Mapping
 import voluptuous as vol
 
 from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
+    StateType,
 )
 
 from .const import (
@@ -66,12 +72,12 @@ class ArpansaSensor(SensorEntity):
         self._available = True
 
     @property
-    def name(self) -> str:
+    def name(self) -> str | None:
         """Return the name of the entity."""
         return self._name + " UV Index"
 
     @property
-    def unique_id(self) -> str:
+    def unique_id(self) -> str | None:
         """Return the unique ID of the sensor."""
         return self._createSensorName()
 
@@ -81,22 +87,29 @@ class ArpansaSensor(SensorEntity):
         return self._available
 
     @property
-    def native_value(self) -> Optional[float]:
+    def native_value(self) -> StateType | date | datetime:
         """Return the current value of the sensor."""
         return self._state
 
     @property
-    def icon(self) -> str:
+    def icon(self) -> str | None:
         """Return the icon for the entity."""
         return "mdi:sunglasses"
 
     @property
-    def state_class(self):
+    def state_class(self) -> SensorStateClass | str | None:
         """Return the state class for the entity."""
         return SensorStateClass.MEASUREMENT
 
     @property
-    def attribution(self) -> str:
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        extra_info = {}
+        extra_info["Last Updated (UTC)"] = self.details["utcdatetime"]
+        extra_info["Status"] = self.details["status"]
+        return extra_info
+
+    @property
+    def attribution(self) -> str | None:
         """Return the attribution for the sensor data."""
         return ATTRIBUTION
 
