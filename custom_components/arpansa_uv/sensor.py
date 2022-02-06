@@ -126,6 +126,10 @@ class ArpansaSensor(CoordinatorEntity,SensorEntity):
         return self._createSensorName()
 
     @property
+    def should_poll(self) -> bool:
+        return True
+
+    @property
     def available(self) -> bool:
         """Return True if entity is available."""
         self.details = self.coordinator.data.getLatest(self._name)
@@ -140,7 +144,6 @@ class ArpansaSensor(CoordinatorEntity,SensorEntity):
         """Return the current value of the sensor."""
         self.details = self.coordinator.data.getLatest(self._name)
         self._state = self.details["index"]
-        _LOGGER.debug(f"latest value for {self._name} is {self._state}")
         return self._state
 
     @property
