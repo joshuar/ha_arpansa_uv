@@ -7,5 +7,6 @@ DEFAULT_SCAN_INTERVAL = 1
 DEFAULT_NAME = "ARPANSA UV"
 
 CONF_NAME = "name"
+CONF_API = "arpansa"
 CONF_LOCATIONS = "locations"
 CONF_POLL_INTERVAL = "poll_interval"

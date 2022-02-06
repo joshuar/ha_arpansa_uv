@@ -30,7 +30,7 @@ class Arpansa:
         return allLocations
 
     def getAllLatest(self):
-        """Get the latest measurements for all locations."""
+        """Get the latest measurements and details for all locations."""
         rs = self.measurements.find_all("location")
         allLocations = []
         for l in rs:
@@ -40,7 +40,7 @@ class Arpansa:
         return tuple(allLocations)
     
     def getLatest(self,name):
-        """Get the latest measurements for a specified location."""
+        """Get the latest measurements and details for a specified location."""
         rs = self.measurements.find("location", {"id": name})
         info = extractInfo(rs)
         info["friendlyname"] = name
