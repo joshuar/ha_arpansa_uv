@@ -1,5 +1,6 @@
 """ARPANSA  """
 from cProfile import run
+from multiprocessing.connection import Client
 from bs4 import BeautifulSoup
 import lxml
 import aiohttp
@@ -14,12 +15,14 @@ class Arpansa:
 
     async def fetchLatestMeasurements(self,session):
         """Retrieve the latest data from the ARPANSA site."""
-        async with session.get(ARPANSA_URL) as response:
-            try:
+        try:
+            async with session.get(ARPANSA_URL) as response:
                 t = await response.text()
                 self.measurements = BeautifulSoup(t,'xml')
-            except response.status != 200:
-                self.measurements = None
+                if response.status != 200:
+                    raise ApiError(f"Unexpected response from ARPANSA server: {response.status}")
+        except Exception as err:
+            raise ApiError from err
 
     def getAllLocations(self):
         """Get the names of all locations."""
@@ -53,6 +56,10 @@ def extractInfo(rs):
         if state.name is not None:
             extracted[state.name] = state.text
     return extracted
+
+class ApiError(Exception):
+    """Raised when there is a problem accessing the ARPANSA data."""
+    pass
 
 async def main():
     """Example usage of the class"""

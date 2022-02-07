@@ -4,15 +4,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from .pyarpansa import Arpansa
+from .pyarpansa import Arpansa, ApiError
 
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import (
-    HomeAssistant,
-    callback
-)
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
@@ -44,18 +41,19 @@ async def build_schema(
     """ 
     match step:
         case "user":
-            session = async_get_clientsession(hass)
             arpansa = Arpansa()
-            await arpansa.fetchLatestMeasurements(session)
+            session = async_get_clientsession(hass)
+            try:
+                await arpansa.fetchLatestMeasurements(session)
+            except ApiError as err:
+                raise CantConnect from err
             locations = arpansa.getAllLocations()
-
             schema = vol.Schema(
                 {   
                     vol.Required(CONF_NAME,default=DEFAULT_NAME): cv.string,
-                    vol.Required(CONF_LOCATIONS): cv.multi_select(locations),
+                    vol.Optional(CONF_LOCATIONS): cv.multi_select(locations),
                 }
             )
-
             return schema
         case "init":
             schema = vol.Schema(
@@ -65,23 +63,7 @@ async def build_schema(
                 )
             return schema
         case None:
-            _LOGGER.error("No schema provided? Should not get here")
-            return None
-
-
-# class PlaceholderHub:
-#     """Placeholder class to make tests pass.
-
-#     TODO Remove this placeholder class and replace with things from your PyPI package.
-#     """
-
-#     def __init__(self, poll_interval: int) -> None:
-#         """Initialize."""
-#         self.poll_interval = poll_interval
-
-#     # async def authenticate(self, username: str, password: str) -> bool:
-#     #     """Test if we can authenticate with the host."""
-#     #     return True
+            raise UnknownStep
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any], step_id: str) -> dict[str, Any]:
@@ -124,36 +106,36 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Get values from user."""
-        info = {}
         errors = {}
 
-        config_schema = await build_schema(
-            config_entry=None,
-            hass=self.hass,
-            show_advanced=self.show_advanced_options,
-            step = "user",
-        )
-
-        if user_input is None:
-            return self.async_show_form(
-                step_id="user", data_schema=config_schema
-            )
         try:
-            info = await validate_input(self.hass, data=user_input, step_id="user")
-        except CannotConnect:
+            config_schema = await build_schema(
+                config_entry=None,
+                hass=self.hass,
+                show_advanced=self.show_advanced_options,
+                step = "user",
+            )
+            if user_input is None:
+                return self.async_show_form(
+                    step_id="user", data_schema=config_schema
+                )
+            else:              
+                info = await validate_input(self.hass, data=user_input, step_id="user")
+                return self.async_create_entry(title=info[CONF_NAME], data=user_input)
+            # return self.async_show_form(
+            #     step_id="user", data_schema=config_schema, errors=errors
+            # )
+        except CantConnect:
+            _LOGGER.exception("Could not connect")
             errors["base"] = "cannot_connect"
-        except InvalidAuth:
-            errors["base"] = "invalid_auth"
+        except UnknownStep:
+            _LOGGER.exception("No step defined")
+            errors["base"] = "unknown_step"
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception("Unexpected exception")
             errors["base"] = "unknown"
-        else:
-            return self.async_create_entry(title=info[CONF_NAME], data=user_input)
 
-        return self.async_show_form(
-            step_id="user", data_schema=config_schema, errors=errors
-        )
-
+    
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
@@ -181,10 +163,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id="init", data_schema=options_schema, errors=errors
         )
 
+class CantConnect(HomeAssistantError):
+    """Error to indicate failure to connect to API."""
 
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate there is invalid auth."""
+class UnknownStep(HomeAssistantError):
+    """Error to indicate the config step was not known."""

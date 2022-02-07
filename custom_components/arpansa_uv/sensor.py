@@ -1,7 +1,7 @@
 """Sensor platform for ARPANSA."""
 from __future__ import annotations
 
-from .pyarpansa import Arpansa
+from .pyarpansa import ApiError
 import inflection
 import logging
 from datetime import (
@@ -71,13 +71,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities: AddEntitiesC
             async with async_timeout.timeout(10):
                 await api.fetchLatestMeasurements(session)
                 return api
-        # except ApiAuthError as err:
-        #     # Raising ConfigEntryAuthFailed will cancel future updates
-        #     # and start a config flow with SOURCE_REAUTH (async_step_reauth)
-        #     raise ConfigEntryAuthFailed from err
-        except:# ApiError as err:
-            #raise UpdateFailed(f"Error communicating with API: {err}")
-            raise UpdateFailed(f"Error communicating with API")
+        except ApiError as err:
+            raise UpdateFailed from err
 
     coordinator = DataUpdateCoordinator(
         hass,
