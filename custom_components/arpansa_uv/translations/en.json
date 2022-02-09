@@ -15,7 +15,7 @@
         "step": {
             "init": {
                 "data": {
-                    "poll_interval": "Interval to poll ARPANSA for new values in minutes"
+                    "poll_interval": "Interval (in minutes) on which to check ARPANSA for new values."
                 }
             },
             "description": "Options for ARPANSA UV",
