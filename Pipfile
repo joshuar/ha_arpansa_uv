@@ -9,6 +9,7 @@ lxml = "*"
 aiohttp = "*"
 homeassistant = "*"
 inflection = "*"
+black = "*"
 
 [dev-packages]
 
