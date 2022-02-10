@@ -1,5 +1,8 @@
 # ARPANSA UV Values Custom Component for Home Assistant
 
+![GitHub Pipenv locked Python version](https://img.shields.io/github/pipenv/locked/python-version/joshuar/ha_arpansa_uv)
+![GitHub last commit](https://img.shields.io/github/last-commit/joshuar/ha_arpansa_uv)
+
 This is a simple custom component for Home Assistant that fetches the UV values from the [ARPANSA site](https://www.arpansa.gov.au/our-services/monitoring/ultraviolet-radiation-monitoring/ultraviolet-radation-data-information). 
 
 ## Installation
