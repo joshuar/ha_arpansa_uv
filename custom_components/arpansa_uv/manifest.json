@@ -3,6 +3,7 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/joshuar/ha_arpansa_uv",
+  "issue_tracker": "https://github.com/joshuar/ha_arpansa_uv/issues",
   "domain": "arpansa_uv",
   "iot_class": "cloud_polling",
   "name": "ARPANSA UV Values",

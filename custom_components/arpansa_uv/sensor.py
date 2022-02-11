@@ -1,18 +1,14 @@
 """Sensor platform for ARPANSA."""
 from __future__ import annotations
 
-from .pyarpansa import ApiError
 import inflection
 import logging
 from datetime import (
     date,
     datetime,
-    timedelta,
 )
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from collections.abc import Mapping
-import async_timeout
-import voluptuous as vol
 
 from homeassistant.components.sensor import (
     SensorEntity,
@@ -24,78 +20,29 @@ from .const import (
     DOMAIN,
     ATTRIBUTION,
     CONF_LOCATIONS,
-    CONF_API,
-    DEFAULT_SCAN_INTERVAL,
 )
 
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
-# import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 _LOGGER = logging.getLogger(__name__)
-SCAN_INTERVAL = timedelta(minutes=DEFAULT_SCAN_INTERVAL)
-
-async def async_setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None
-) -> None:
-   """Deprecated setup."""
-   pass
-
 
 async def async_setup_entry(hass, config_entry, async_add_entities: AddEntitiesCallback):
     """Set up ARPANSA UV."""
-    api = hass.data[DOMAIN][config_entry.entry_id].get(CONF_API)
-
-    async def async_update_data():
-        """Fetch data from API endpoint.
-
-        This is the place to pre-process the data to lookup tables
-        so entities can quickly look up their data.
-        """
-        session = async_get_clientsession(hass)
-        try:
-            # Note: asyncio.TimeoutError and aiohttp.ClientError are already
-            # handled by the data update coordinator.
-            async with async_timeout.timeout(10):
-                await api.fetchLatestMeasurements(session)
-                return api
-        except ApiError as err:
-            raise UpdateFailed from err
-
-    coordinator = DataUpdateCoordinator(
-        hass,
-        _LOGGER,
-        # Name of the data. For logging purposes.
-        name="arpansa",
-        update_method=async_update_data,
-        # Polling interval. Will only be polled if there are subscribers.
-        update_interval=SCAN_INTERVAL,
-    )
-
-    await coordinator.async_config_entry_first_refresh()
-
-    # session = async_get_clientsession(hass)
-    # await api.fetchLatestMeasurements(session)
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     sensors = list()
+    locations = list()
     if config_entry.data[CONF_LOCATIONS] is not None:
         for location in config_entry.data[CONF_LOCATIONS]:
-            sensors += [ArpansaSensor(coordinator,coordinator.data.getLatest(location))]
+            _LOGGER.debug(f"Getting latest data for location {location}")
+            locations += [coordinator.api.getLatest(location)]
     else: 
-        for sensor in coordinator.data.getAllLatest():
-            sensors += [ArpansaSensor(coordinator,sensor)]
+        locations = coordinator.api.getAllLatest()
+
+    for details in locations:
+        _LOGGER.debug(f"Creating sensor from {details}")
+        sensors += [ArpansaSensor(coordinator,details)]
 
     async_add_entities(sensors, update_before_add=True)
 

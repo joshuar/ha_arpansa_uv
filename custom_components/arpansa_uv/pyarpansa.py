@@ -10,13 +10,16 @@ from .const import ARPANSA_URL
 
 class Arpansa:
     """Arpansa class fetches the latest measurements from the ARPANSA site"""
-    def __init__(self):
+    def __init__(
+        self,session: aiohttp.ClientSession
+    ) -> None:
+        self._session = session
         self.measurements = None 
 
-    async def fetchLatestMeasurements(self,session):
+    async def fetchLatestMeasurements(self):
         """Retrieve the latest data from the ARPANSA site."""
         try:
-            async with session.get(ARPANSA_URL) as response:
+            async with self._session.get(ARPANSA_URL) as response:
                 t = await response.text()
                 self.measurements = BeautifulSoup(t,'xml')
                 if response.status != 200:
@@ -24,7 +27,7 @@ class Arpansa:
         except Exception as err:
             raise ApiError from err
 
-    def getAllLocations(self):
+    def getAllLocations(self) -> list:
         """Get the names of all locations."""
         rs = self.measurements.find_all("location") 
         allLocations = []
@@ -32,7 +35,7 @@ class Arpansa:
             allLocations.append(l.get("id"))
         return allLocations
 
-    def getAllLatest(self):
+    def getAllLatest(self) -> list:
         """Get the latest measurements and details for all locations."""
         rs = self.measurements.find_all("location")
         allLocations = []
@@ -40,16 +43,16 @@ class Arpansa:
             thisLocation = extractInfo(l)
             thisLocation["friendlyname"] = l.get("id")
             allLocations.append(thisLocation)
-        return tuple(allLocations)
+        return allLocations
     
-    def getLatest(self,name):
+    def getLatest(self,name) -> dict:
         """Get the latest measurements and details for a specified location."""
         rs = self.measurements.find("location", {"id": name})
         info = extractInfo(rs)
         info["friendlyname"] = name
         return info
     
-def extractInfo(rs):
+def extractInfo(rs) -> dict:
     """Convert a BeautifulSoup ResultSet into a dictionary."""
     extracted = {}
     for state in rs:
@@ -64,8 +67,8 @@ class ApiError(Exception):
 async def main():
     """Example usage of the class"""
     async with aiohttp.ClientSession() as session:
-        arpansa = Arpansa()
-        await arpansa.fetchLatestMeasurements(session)
+        arpansa = Arpansa(session)
+        await arpansa.fetchLatestMeasurements()
         for measurement in arpansa.getAllLatest():
             print(measurement)
         location = arpansa.getLatest("Brisbane")
