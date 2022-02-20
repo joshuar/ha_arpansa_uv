@@ -83,6 +83,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def __init__(self):
         """Initialize."""
         self._errors = {}
+        self._step = "config_user"
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -94,7 +95,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 config_entry=None,
                 hass=self.hass,
                 show_advanced=self.show_advanced_options,
-                step = "config_user",
+                step = self._step,
             )
         except CantConnect:
             _LOGGER.exception("Could not connect")
@@ -130,6 +131,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         self.config_entry = config_entry
         self.options = dict(config_entry.options)
         self._errors = {}
+        self._step = "options_user"
 
 
     async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
@@ -144,7 +146,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 config_entry=self.config_entry,
                 hass=self.hass,
                 show_advanced=self.show_advanced_options,
-                step = "options_user",
+                step = self._step,
             )
         except CantConnect:
             _LOGGER.exception("Could not connect")
