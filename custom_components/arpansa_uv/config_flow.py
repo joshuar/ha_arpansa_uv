@@ -88,6 +88,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Get values from user."""
+        config_schema = None
         try:
             config_schema = await build_schema(
                 config_entry=None,
@@ -137,6 +138,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_user(self, user_input=None):
         """Handle a flow initialized by the user."""
+        config_schema = None
         try:
             config_schema = await build_schema(
                 config_entry=self.config_entry,
