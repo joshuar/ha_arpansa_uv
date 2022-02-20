@@ -13,7 +13,7 @@ HACS method coming. For now, manually install by copying the files in a new `cus
 
 After you have installed the custom component (see above):
 
-1. Goto the `Configuration` -> `Integrations` page.
+1. Go to the `Configuration` -> `Integrations` page.
 2. On the bottom right of the page, click on the `+ Add Integration` sign to add an integration
 3. Search for ***ARPANSA UV*** (If you don't see it, try refreshing your browser page to reload the cache.)
 4. Add a name for the integration (just for identification purposes on the integration page) and the stations you want to monitor
@@ -31,3 +31,7 @@ logger:
   logs:
     custom_components.arpansa_uv: debug
 ```
+
+## Credits
+
+[Ultraviolet icons created by Freepik - Flaticon](https://www.flaticon.com/free-icons/ultraviolet)
