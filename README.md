@@ -1,3 +1,5 @@
+UNMAINTAINED: This project is unmaintained and may stop working with future versions of Home Assistant.
+
 # ARPANSA UV Values Custom Component for Home Assistant
 
 ![GitHub Pipenv locked Python version](https://img.shields.io/github/pipenv/locked/python-version/joshuar/ha_arpansa_uv)
